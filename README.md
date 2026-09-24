@@ -129,9 +129,11 @@ scripts/
     ```bash
     git clone https://github.com/renatocamara/rag-search-tuning-playbook.git
     cd rag-search-tuning-playbook
-    python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+    python -m venv .venv
+    source .venv/bin/activate          # bash / zsh
+    .\.venv\Scripts\Activate.ps1       # Windows PowerShell (if blocked: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned)
     pip install -r requirements.txt
-    cp .env.example .env                                     # fill in your endpoints
+    cp .env.example .env               # PowerShell: copy .env.example .env   (then fill in your endpoints)
     az login
     ```
 
