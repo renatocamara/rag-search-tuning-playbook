@@ -92,6 +92,14 @@ Assign these to the identity that runs the scripts (your user for a laptop, the 
 
 The Search service must accept Entra ID tokens: *Settings > Keys > API access control > Both* (or *Role-based access control*).
 
+Being Owner or Contributor on the subscription is **not enough** for Azure AI Search: those roles cover the control plane (creating the index works), while reading and writing documents is a data plane operation that returns `403` until *Search Index Data Contributor* is assigned explicitly. Assignments take a few minutes to propagate:
+
+```bash
+SEARCH_ID=$(az search service list --query "[?name=='<search-service>'].id" -o tsv)
+ME=$(az ad signed-in-user show --query id -o tsv)
+az role assignment create --role "Search Index Data Contributor" --assignee-object-id $ME --assignee-principal-type User --scope $SEARCH_ID
+```
+
 Cosmos DB data plane role assignment (control plane roles such as Contributor do not grant data access):
 
 ```bash

@@ -29,8 +29,13 @@ SEARCH_INDEX = os.getenv("SEARCH_INDEX", "contoso-kb")
 SEARCH_API_VERSION = os.getenv("SEARCH_API_VERSION", "2025-09-01")
 SEMANTIC_CONFIG = os.getenv("SEMANTIC_CONFIG", "contoso-semantic")
 
+# The OpenAI-compatible endpoint of the Foundry (AI Services) account, e.g.
+# https://<account>.openai.azure.com. Base URL only: the SDK adds /openai/... itself.
 AOAI_ENDPOINT = os.getenv("AOAI_ENDPOINT", "").rstrip("/")
-AOAI_API_VERSION = os.getenv("AOAI_API_VERSION", "2024-10-21")
+for _suffix in ("/openai/v1", "/openai"):
+    if AOAI_ENDPOINT.endswith(_suffix):
+        AOAI_ENDPOINT = AOAI_ENDPOINT[: -len(_suffix)]
+AOAI_API_VERSION = os.getenv("AOAI_API_VERSION", "2025-04-01-preview")
 EMBEDDING_DEPLOYMENT = os.getenv("EMBEDDING_DEPLOYMENT", "text-embedding-3-large")
 EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "3072"))
 CHAT_DEPLOYMENT = os.getenv("CHAT_DEPLOYMENT", "gpt-4.1-mini")
@@ -185,10 +190,17 @@ def embed(texts, batch_size=64):
     return vectors
 
 
-def chat(system, user, temperature=0.0):
-    res = aoai().chat.completions.create(
-        model=CHAT_DEPLOYMENT, temperature=temperature,
-        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}])
+def chat(system, user, temperature=None):
+    """Chat completion against the deployment in CHAT_DEPLOYMENT.
+    temperature is only sent when given: reasoning models (gpt-5 family, o-series)
+    reject any value other than the default."""
+    kwargs = {
+        "model": CHAT_DEPLOYMENT,
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+    }
+    if temperature is not None:
+        kwargs["temperature"] = temperature
+    res = aoai().chat.completions.create(**kwargs)
     return res.choices[0].message.content
 
 
