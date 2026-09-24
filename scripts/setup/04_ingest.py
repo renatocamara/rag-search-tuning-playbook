@@ -23,6 +23,7 @@ Cognitive Services OpenAI User.
 """
 
 import argparse
+import json
 import os
 import sys
 from collections import defaultdict
@@ -62,7 +63,8 @@ def build_chunks(meta, body, strategy, known_parts):
     # picked up per chunk below, so they do not leak into every chunk of the document.
     parts = list(meta.get("part_numbers", []))
     pieces = chunking.chunk(body, strategy, title=meta.get("title", doc_id), part_numbers=parts)
-    doc_hash = common.content_hash(body + strategy)
+    # Hash covers metadata too: a change in status, dates or part numbers must re-index the document.
+    doc_hash = common.content_hash(json.dumps(meta, sort_keys=True, default=str) + body + strategy)
     docs = []
     for c in pieces:
         # part numbers present in THIS chunk (plus the document level list for structured chunks,

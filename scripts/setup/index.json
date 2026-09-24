@@ -58,10 +58,10 @@
   "scoringProfiles": [
     {
       "name": "prefer-current",
-      "text": { "weights": { "part_numbers": 5.0, "part_numbers_normalized": 5.0, "title": 2.0, "section": 1.5, "content": 1.0 } },
+      "text": { "weights": { "part_numbers": 3.0, "part_numbers_normalized": 3.0, "title": 2.0, "section": 1.5, "content": 1.0 } },
       "functions": [
         { "type": "tag", "fieldName": "status", "boost": 3.0, "tag": { "tagsParameter": "preferStatus" } },
-        { "type": "freshness", "fieldName": "effective_date", "boost": 2.0, "interpolation": "linear", "freshness": { "boostingDuration": "P1095D" } }
+        { "type": "freshness", "fieldName": "effective_date", "boost": 1.3, "interpolation": "linear", "freshness": { "boostingDuration": "P1095D" } }
       ],
       "functionAggregation": "sum"
     }

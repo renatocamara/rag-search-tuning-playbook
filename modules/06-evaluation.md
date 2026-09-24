@@ -67,13 +67,16 @@ The comparison prints the deltas per metric and then only the questions whose to
 
 Numbers vary with the embedding model and the semantic ranker version, but the shape is consistent:
 
-| Run | hit@1 | stale@1 | Notes |
-|---|---|---|---|
-| `--mode vector` | roughly 0.5 to 0.6 | 0.2 to 0.3 | look-alikes and formats fail; descriptive fine |
-| `--mode hybrid` | 0.7 to 0.8 | 0.2 | part lookups fixed; stale content unchanged |
-| `--mode semantic` | 0.8 | 0.15 to 0.2 | ordering improves |
-| `--mode semantic --current --profile prefer-current` | 0.9 or better | 0 | stale traps fixed |
-| same, after structured chunking (module 03) | 0.95 or better | 0 | spec values fixed |
+Measured with `text-embedding-3-large` (3072 dimensions), `gpt-4.1-mini` and structured chunking:
+
+| Run | hit@1 | hit@5 | stale@1 | Notes |
+|---|---|---|---|---|
+| `--mode vector` (no filter) | 0.66 | 0.91 | 0.20 | prices, flow rates and pressures answered from 2019 to 2022 documents; filter interval from the forum |
+| `--mode hybrid --current` | 0.89 | 0.97 | 0.00 | the big step: exact part numbers count, archive and community excluded |
+| `--mode semantic --current` | 0.91 | 1.00 | 0.00 | reranker orders the candidates better; every question has the right document in the top 5 |
+| `--mode semantic --current --profile prefer-current` (first version of the profile) | 0.83 | 1.00 | 0.00 | worse: a freshness boost of 2.0 pushed the newest documents above the relevant ones |
+
+The last row is the reason this module exists. The remaining miss in the best run is a two-hop question (a kit and a competitor part in the same question), which module 04 answers with the catalog lookup.
 
 If a run does not move in the expected direction, that is the point: something in your environment differs (an analyzer, a field not in the semantic configuration, a filter excluding a needed document), and the per-question diff shows which question to look at.
 

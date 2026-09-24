@@ -19,6 +19,8 @@ Then pre-compute the baseline result files so the comparison step is instant dur
 
 ```bash
 python scripts/eval/run_eval.py --mode vector
+python scripts/eval/run_eval.py --mode hybrid --current
+python scripts/eval/run_eval.py --mode semantic --current
 python scripts/eval/run_eval.py --mode semantic --current --profile prefer-current
 ```
 
@@ -126,10 +128,11 @@ python scripts/demo/lookup.py "What is the Contoso equivalent of a Tailspin TS-B
 ## 6. Measure (3 minutes)
 
 ```bash
-python scripts/eval/run_eval.py --compare results/<vector>.json results/<semantic-current-prefer-current>.json
+python scripts/eval/run_eval.py --compare results/<vector>.json results/<semantic-current>.json
+python scripts/eval/run_eval.py --compare results/<semantic-current>.json results/<semantic-current-prefer-current>.json
 ```
 
-*Overall `hit@1` up sharply, `stale@1` to zero, and a per-question list of what changed. "This is the artifact to keep: every change to the index or the query gets this comparison before it ships."*
+*First comparison: `hit@1` up sharply, `stale@1` to zero, and a per-question list of what changed. Second comparison: the scoring profile, if it lowers `hit@1`, is the proof that tuning without measurement goes backwards. "This is the artifact to keep: every change to the index or the query gets this comparison before it ships."*
 
 Close with module 05 in one sentence (change detection, deletion, cache invalidation are three separate mechanisms; a weekly crawl is one of them) and module 07 if the audience is planning an external phase.
 

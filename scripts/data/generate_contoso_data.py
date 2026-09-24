@@ -384,8 +384,13 @@ The bottle counter estimates plastic bottles saved at 20 fl oz per fill. It can 
 """)
 
     # --- Warranty policies ---
+    # Policies are about product families, not individual parts, so their part_numbers list
+    # is empty on purpose. Listing every product here would put every part number into the
+    # contextual header of every warranty chunk, and any part number query would then match
+    # the (fresh, current, heavily boosted) warranty document first. That is exactly the
+    # "general catalog page that mentions everything" problem seen in real indexes.
     add("current", "warranty-policy-2026", "Contoso Water Solutions commercial warranty policy (2026)", "Contoso Water Solutions",
-        "warranty", "current", "2026-01-01", ["CF-1100-XL", "CF-1100-XLS", "CF-1250-M", "CF-1250-S", "CF-1250-SB", "FX-2200-B", "FX-2200-BR", "FX-3100", "FX-3100-D", "ND-415-A", "ND-415-AS", "ND-515-A", "ND-600-CO"], """
+        "warranty", "current", "2026-01-01", [], """
 # Contoso Water Solutions commercial warranty policy
 
 Effective January 1, 2026. Supersedes the 2021 policy for products shipped on or after the effective date.
@@ -416,7 +421,7 @@ Contact Customer Care with the model number, date code from the product label, i
 """)
 
     add("archive", "warranty-policy-2021", "Contoso Water Solutions commercial warranty policy (2021)", "Contoso Water Solutions",
-        "warranty", "archived", "2021-01-01", ["CF-1100-XL", "CF-1101-XL", "FX-2210-B", "FX-2200-B", "ND-415-A"], """
+        "warranty", "archived", "2021-01-01", [], """
 # Contoso Water Solutions commercial warranty policy
 
 Effective January 1, 2021.
@@ -627,7 +632,7 @@ EVAL = [
          expected_answer="No, service parts are never interchangeable across manufacturers"),
     # stale content traps: the correct answer exists only in current docs
     dict(id="q25", category="stale_trap", question="Which repair kit should I use on a CF-1100-XL manufactured in 2025?",
-         expected_part_numbers=["K-CF-1100-RK2"], expected_doc_ids=["install-CF-1100-series", "faq-contoso-flow", "bulletin-2024-07-CF-1101-XL"],
+         expected_part_numbers=["K-CF-1100-RK2"], expected_doc_ids=["install-CF-1100-series", "faq-contoso-flow", "bulletin-2024-07-CF-1101-XL", "spec-CF-1100-XL"],
          expected_answer="K-CF-1100-RK2, not the generation 1 K-CF-1100-RK"),
     dict(id="q26", category="stale_trap", question="How often should the FX-2200-B filter be replaced?",
          expected_part_numbers=["K-FX-2200-FLT"], expected_doc_ids=["install-FX-2200-series", "spec-FX-2200-B"],
@@ -636,7 +641,7 @@ EVAL = [
          expected_part_numbers=["FX-2200-B", "FX-2200-BR"], expected_doc_ids=["warranty-policy-2026", "spec-FX-2200-B"],
          expected_answer="5 years under the 2026 policy"),
     dict(id="q28", category="stale_trap", question="What is the warranty period for FloorGuard drains?",
-         expected_part_numbers=["ND-415-A"], expected_doc_ids=["warranty-policy-2026"],
+         expected_part_numbers=["ND-415-A"], expected_doc_ids=["warranty-policy-2026", "spec-ND-415-A", "spec-ND-415-AS", "spec-ND-515-A", "spec-ND-600-CO"],
          expected_answer="5 years under the 2026 policy"),
     dict(id="q29", category="stale_trap", question="Is labor covered under the Contoso warranty?",
          expected_part_numbers=[], expected_doc_ids=["warranty-policy-2026"],

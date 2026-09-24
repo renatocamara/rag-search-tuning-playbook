@@ -5,7 +5,7 @@ brand: Contoso Water Solutions
 doc_type: warranty
 status: current
 effective_date: 2026-01-01
-part_numbers: ["CF-1100-XL", "CF-1100-XLS", "CF-1250-M", "CF-1250-S", "CF-1250-SB", "FX-2200-B", "FX-2200-BR", "FX-3100", "FX-3100-D", "ND-415-A", "ND-415-AS", "ND-515-A", "ND-600-CO"]
+part_numbers: []
 source_url: https://www.contoso-water.example/current/warranty-policy-2026
 ---
 

@@ -62,17 +62,21 @@ python scripts/demo/query.py "rough-in for the CF-1101-XL" --mode semantic --pro
 
 The `prefer-current` profile (defined in `scripts/setup/index.json`) does three things: weights matches in `part_numbers` five times more than matches in `content`, boosts documents whose `status` matches the `preferStatus` parameter passed at query time, and boosts documents with a recent `effective_date`.
 
-Two limits to know. A scoring profile affects the BM25 leg of a hybrid query; in the default configuration the semantic reranker then orders the top 50 without it. If you need the preference to survive reranking, create the index with `03_index.py --boosted-reranker` (adds `rankingOrder: boostedRerankerScore` to the semantic configuration) on a recent API version. And agentic retrieval (knowledge bases) ignores scoring profiles entirely, so for that path the filter and the index content are the only levers.
+Three things to know about scoring profiles:
+
+* **They can make results worse.** A freshness boost says "prefer the newest document", and the newest document is not always the most relevant one. On this dataset an early version of `prefer-current` with a freshness boost of 2.0 pushed the cross reference guide (dated 2025) above the product spec sheets (dated 2023) on plain part lookups, and dropped `hit@1` from 0.91 to 0.83. A document that mentions many part numbers (a catalog page, a policy, a cross reference table) is the usual beneficiary of a badly tuned profile. Always measure a profile with the evaluation set before enabling it; this is the single most convincing reason to have one.
+* The profile is applied to the BM25 leg of a hybrid query, and depending on the API version and the semantic configuration's `rankingOrder`, also after semantic reranking (`03_index.py --boosted-reranker` sets `rankingOrder: boostedRerankerScore` explicitly).
+* Agentic retrieval (knowledge bases) ignores scoring profiles entirely, so for that path the filter and the index content are the only levers.
 
 ## Step 4: The recommended combination
 
 ```bash
-python scripts/demo/query.py "..." --mode semantic --current --profile prefer-current
+python scripts/demo/query.py "..." --mode semantic --current
 ```
 
 * Filter out `community` always (or never index it; see below).
-* Filter out `archived` by default; drop the filter only when the question is explicitly about a discontinued product (module 04's catalog lookup tells you that, because the part's `status` is `discontinued`).
-* Keep the scoring profile on so that, within current content, recent and official documents win.
+* Filter out `archived` by default; drop the filter only when the question is explicitly about a discontinued product (module 04's catalog lookup tells you that, because the part's `status` is `discontinued`), and use the scoring profile in that case so current documents still rank first.
+* Treat the scoring profile as a tool for the no-filter case, not as a default. Measure it.
 
 ## Step 5: Measure
 
@@ -82,7 +86,7 @@ python scripts/eval/run_eval.py --mode semantic --current --profile prefer-curre
 python scripts/eval/run_eval.py --compare results/<semantic>.json results/<semantic-current-prefer-current>.json
 ```
 
-`stale@1` should drop to zero and the `stale_trap` category should move to all correct. Nothing else should get worse; if `descriptive` drops, a filter is excluding a document you needed, which is the kind of thing you only discover with an evaluation set.
+`stale@1` should drop to zero with the filter alone. Compare the run with and without `--profile`: if the profile lowers `hit@1` on `part_lookup` or `spec_value`, it is boosting the wrong documents, and the per-question diff shows which. Nothing else should get worse; if `descriptive` drops, a filter is excluding a document you needed, which is the kind of thing you only discover with an evaluation set.
 
 ## Where the metadata comes from in real life
 

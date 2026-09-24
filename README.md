@@ -152,7 +152,7 @@ scripts/
     ```bash
     python scripts/demo/compare.py "What repair kit fits the CF-1100-XLS?"
     python scripts/eval/run_eval.py --mode vector
-    python scripts/eval/run_eval.py --mode semantic --current --profile prefer-current
+    python scripts/eval/run_eval.py --mode semantic --current
     ```
 
 Then follow the modules in order, or jump to [docs/demo-runbook.md](docs/demo-runbook.md) for the condensed walkthrough.
