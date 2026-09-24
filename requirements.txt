@@ -1,0 +1,6 @@
+azure-identity>=1.19
+azure-storage-blob>=12.24
+azure-cosmos>=4.9
+openai>=1.55
+requests>=2.32
+python-dotenv>=1.0

@@ -1,0 +1,83 @@
+[
+  {
+    "id": "LITWARE-L-9450",
+    "competitorBrand": "Litware",
+    "competitorPartNumber": "L-9450",
+    "competitorDescription": "Manual flush valve 1.28 gpf, 1 in inlet",
+    "contosoPartNumber": "CF-1100-XL",
+    "matchType": "Functional equivalent",
+    "notes": "Same rough-in. Contoso kit K-CF-1100-RK2 does not fit Litware valves."
+  },
+  {
+    "id": "LITWARE-L-9450-S",
+    "competitorBrand": "Litware",
+    "competitorPartNumber": "L-9450-S",
+    "competitorDescription": "Sensor flush valve 1.28 gpf",
+    "contosoPartNumber": "CF-1100-XLS",
+    "matchType": "Functional equivalent",
+    "notes": "Litware uses a 6 VDC sensor; Contoso uses S-CF-IR3 with B-CF-4AA."
+  },
+  {
+    "id": "LITWARE-L-9460",
+    "competitorBrand": "Litware",
+    "competitorPartNumber": "L-9460",
+    "competitorDescription": "Manual flush valve 1.6 gpf",
+    "contosoPartNumber": "CF-1100-XL",
+    "matchType": "Nearest current equivalent",
+    "notes": "Contoso 1.6 gpf model CF-1101-XL was discontinued 2024-06-30. Recommend CF-1100-XL (1.28 gpf)."
+  },
+  {
+    "id": "TAILSPIN-TS-BF200",
+    "competitorBrand": "Tailspin",
+    "competitorPartNumber": "TS-BF200",
+    "competitorDescription": "Bottle filling station, non-refrigerated",
+    "contosoPartNumber": "FX-2200-B",
+    "matchType": "Functional equivalent",
+    "notes": "Tailspin filter is not interchangeable with K-FX-2200-FLT."
+  },
+  {
+    "id": "TAILSPIN-TS-BF200R",
+    "competitorBrand": "Tailspin",
+    "competitorPartNumber": "TS-BF200R",
+    "competitorDescription": "Bottle filling station, refrigerated",
+    "contosoPartNumber": "FX-2200-BR",
+    "matchType": "Functional equivalent",
+    "notes": ""
+  },
+  {
+    "id": "WOODGROVE-WG-FD4",
+    "competitorBrand": "Woodgrove",
+    "competitorPartNumber": "WG-FD4",
+    "competitorDescription": "4 in round floor drain, nickel bronze top",
+    "contosoPartNumber": "ND-415-A",
+    "matchType": "Functional equivalent",
+    "notes": "Woodgrove strainer bolt pattern differs; use ND-415-AR only on Contoso bodies."
+  },
+  {
+    "id": "WOODGROVE-WG-FD4-SB",
+    "competitorBrand": "Woodgrove",
+    "competitorPartNumber": "WG-FD4-SB",
+    "competitorDescription": "4 in round floor drain with sediment bucket",
+    "contosoPartNumber": "ND-415-AS",
+    "matchType": "Functional equivalent",
+    "notes": ""
+  },
+  {
+    "id": "WOODGROVE-WG-CO6",
+    "competitorBrand": "Woodgrove",
+    "competitorPartNumber": "WG-CO6",
+    "competitorDescription": "6 in round floor cleanout",
+    "contosoPartNumber": "ND-600-CO",
+    "matchType": "Functional equivalent",
+    "notes": ""
+  },
+  {
+    "id": "LITWARE-LF-500",
+    "competitorBrand": "Litware",
+    "competitorPartNumber": "LF-500",
+    "competitorDescription": "Sensor lavatory faucet, hardwired",
+    "contosoPartNumber": "CF-1250-S",
+    "matchType": "Functional equivalent",
+    "notes": "Battery version equivalent is CF-1250-SB."
+  }
+]

@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.pyc
+results/*
+!results/.gitkeep
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+.vscode/

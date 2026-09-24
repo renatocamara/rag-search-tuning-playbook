@@ -1,0 +1,69 @@
+{
+  "name": "__INDEX_NAME__",
+  "fields": [
+    { "name": "chunk_id", "type": "Edm.String", "key": true, "filterable": true, "sortable": true, "searchable": false },
+    { "name": "doc_id", "type": "Edm.String", "filterable": true, "facetable": true, "searchable": false },
+    { "name": "chunk_index", "type": "Edm.Int32", "filterable": true, "sortable": true },
+    { "name": "title", "type": "Edm.String", "searchable": true, "analyzer": "en.microsoft" },
+    { "name": "section", "type": "Edm.String", "searchable": true, "analyzer": "en.microsoft" },
+    { "name": "content", "type": "Edm.String", "searchable": true, "analyzer": "en.microsoft" },
+    { "name": "content_vector", "type": "Collection(Edm.Single)", "searchable": true, "dimensions": "__DIMENSIONS__", "vectorSearchProfile": "hnsw-profile", "stored": false },
+
+    { "name": "brand", "type": "Edm.String", "searchable": true, "filterable": true, "facetable": true },
+    { "name": "doc_type", "type": "Edm.String", "filterable": true, "facetable": true },
+    { "name": "status", "type": "Edm.String", "filterable": true, "facetable": true },
+    { "name": "effective_date", "type": "Edm.DateTimeOffset", "filterable": true, "sortable": true, "facetable": true },
+
+    { "name": "part_numbers", "type": "Collection(Edm.String)", "searchable": true, "filterable": true, "facetable": true, "analyzer": "part_number_exact" },
+    { "name": "part_numbers_normalized", "type": "Collection(Edm.String)", "searchable": true, "filterable": true, "analyzer": "part_number_exact" },
+
+    { "name": "source_url", "type": "Edm.String", "filterable": false, "searchable": false },
+    { "name": "content_hash", "type": "Edm.String", "filterable": true, "searchable": false },
+    { "name": "chunking_strategy", "type": "Edm.String", "filterable": true, "facetable": true },
+    { "name": "last_indexed", "type": "Edm.DateTimeOffset", "filterable": true, "sortable": true }
+  ],
+
+  "analyzers": [
+    {
+      "name": "part_number_exact",
+      "@odata.type": "#Microsoft.Azure.Search.CustomAnalyzer",
+      "tokenizer": "keyword_v2",
+      "tokenFilters": [ "lowercase" ]
+    }
+  ],
+
+  "vectorSearch": {
+    "algorithms": [
+      { "name": "hnsw-cosine", "kind": "hnsw", "hnswParameters": { "m": 4, "efConstruction": 400, "efSearch": 500, "metric": "cosine" } }
+    ],
+    "profiles": [
+      { "name": "hnsw-profile", "algorithm": "hnsw-cosine" }
+    ]
+  },
+
+  "semantic": {
+    "defaultConfiguration": "__SEMANTIC_CONFIG__",
+    "configurations": [
+      {
+        "name": "__SEMANTIC_CONFIG__",
+        "prioritizedFields": {
+          "titleField": { "fieldName": "title" },
+          "prioritizedContentFields": [ { "fieldName": "content" } ],
+          "prioritizedKeywordsFields": [ { "fieldName": "part_numbers" }, { "fieldName": "brand" }, { "fieldName": "section" } ]
+        }
+      }
+    ]
+  },
+
+  "scoringProfiles": [
+    {
+      "name": "prefer-current",
+      "text": { "weights": { "part_numbers": 5.0, "part_numbers_normalized": 5.0, "title": 2.0, "section": 1.5, "content": 1.0 } },
+      "functions": [
+        { "type": "tag", "fieldName": "status", "boost": 3.0, "tag": { "tagsParameter": "preferStatus" } },
+        { "type": "freshness", "fieldName": "effective_date", "boost": 2.0, "interpolation": "linear", "freshness": { "boostingDuration": "P1095D" } }
+      ],
+      "functionAggregation": "sum"
+    }
+  ]
+}
