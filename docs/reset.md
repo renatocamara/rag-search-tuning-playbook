@@ -36,6 +36,8 @@ SEARCH_INDEX=contoso-kb-naive python scripts/setup/04_ingest.py --chunking naive
 
 Then switch with the environment variable: `SEARCH_INDEX=contoso-kb-naive python scripts/demo/query.py "..."`. On Windows PowerShell use `$env:SEARCH_INDEX="contoso-kb-naive"` before the command.
 
+The same trick gives a faithful "vector only" baseline for audiences that want to see the two configurations as two indexes with identical chunks and vectors: copy `index.json`, make `content` and `part_numbers` non-searchable and the metadata non-filterable, create it under another name and ingest into both. The playbook does not ship that variant because the request body already isolates the difference on one index, but it removes the "you changed the data too" objection for a sceptical room.
+
 ## Removing everything
 
 Delete the index, the `ContosoCatalog` database and the `contoso-docs` container in the portal or with the CLI, or simply delete the resource group if the services were created for the playbook. Pause or delete the AI Search service and the Cosmos DB account when not in use; they are the cost drivers.

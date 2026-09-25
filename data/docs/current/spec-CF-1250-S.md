@@ -6,7 +6,10 @@ doc_type: spec_sheet
 status: current
 effective_date: 2023-01-15
 part_numbers: ["CF-1250-S", "K-CF-1250-CART", "S-CF-IR3", "P-CF-24V"]
-source_url: https://www.contoso-water.example/current/spec-CF-1250-S
+source: website
+source_tier: 1
+is_canonical: true
+source_url: https://www.contoso-water.example/spec-CF-1250-S
 ---
 
 # ClearTouch Sensor Lavatory Faucet 0.5 gpm (hardwired)

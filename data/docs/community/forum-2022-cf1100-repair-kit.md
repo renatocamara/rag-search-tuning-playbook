@@ -6,7 +6,10 @@ doc_type: community_post
 status: community
 effective_date: 2022-04-18
 part_numbers: ["CF-1100-XL", "K-CF-1100-RK"]
-source_url: https://www.contoso-water.example/community/forum-2022-cf1100-repair-kit
+source: community
+source_tier: 5
+is_canonical: false
+source_url: https://community.contoso-water.example/forum-2022-cf1100-repair-kit
 ---
 
 

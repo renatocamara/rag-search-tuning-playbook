@@ -6,7 +6,10 @@ doc_type: cross_reference
 status: current
 effective_date: 2025-09-01
 part_numbers: ["CF-1100-XL", "CF-1100-XLS", "CF-1250-S", "FX-2200-B", "FX-2200-BR", "ND-415-A", "ND-415-AS", "ND-600-CO"]
-source_url: https://www.contoso-water.example/current/cross-reference-guide
+source: website
+source_tier: 1
+is_canonical: true
+source_url: https://www.contoso-water.example/cross-reference-guide
 ---
 
 

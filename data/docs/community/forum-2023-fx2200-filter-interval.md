@@ -6,7 +6,10 @@ doc_type: community_post
 status: community
 effective_date: 2023-03-02
 part_numbers: ["FX-2200-B", "K-FX-2200-FLT"]
-source_url: https://www.contoso-water.example/community/forum-2023-fx2200-filter-interval
+source: community
+source_tier: 5
+is_canonical: false
+source_url: https://community.contoso-water.example/forum-2023-fx2200-filter-interval
 ---
 
 

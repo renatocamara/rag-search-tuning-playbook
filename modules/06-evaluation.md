@@ -10,13 +10,15 @@ Time: 10 minutes.
 
 ## The evaluation set
 
-`data/eval/eval_set.jsonl` has 35 questions, one per line:
+`data/eval/eval_set.jsonl` has 37 questions, one per line:
 
 ```json
 {"id": "q01", "category": "part_lookup",
  "question": "What repair kit fits the CF-1100-XLS?",
  "expected_part_numbers": ["K-CF-1100-RK2"],
  "expected_doc_ids": ["spec-CF-1100-XLS", "faq-contoso-flow", "install-CF-1100-series"],
+ "must_contain": ["K-CF-1100-RK2"],
+ "must_not_contain": ["K-CF-1100-RK"],
  "expected_answer": "K-CF-1100-RK2"}
 ```
 
@@ -26,10 +28,12 @@ Time: 10 minutes.
 | `part_format` | 3 | the same, typed as `cf1100xls`, `FX 2200 BR`, `ND415A` |
 | `spec_value` | 6 | a value inside a table: rough-in, pressure range, bowl depth |
 | `cross_reference` | 5 | competitor part to Contoso part, including a two-hop question |
-| `stale_trap` | 6 | the correct answer exists only in current documents; archive or community has a wrong one |
-| `descriptive` | 5 | symptom and how-to questions where vector search already does well |
+| `stale_trap` | 8 | the correct answer exists only in current, canonical documents; archive, community or a SharePoint copy has a wrong one |
+| `descriptive` | 5 | symptom and how-to questions where vector search already does well. These are the **control questions**: a change that fixes the traps and lowers this category has a cost that must be visible |
 
-Three fields carry the ground truth. `expected_doc_ids` is the set of documents that contain the answer (any one is a hit). `expected_part_numbers` are the part numbers a correct answer must mention. `expected_answer` is a short reference for the judge.
+Five fields carry the ground truth. `expected_doc_ids` is the set of documents that contain the answer (any one is a hit). `expected_part_numbers` are the part numbers a correct answer must mention. `must_contain` and `must_not_contain` are strings the generated answer is graded on, whole-token and case-insensitive, so `K-CF-1100-RK` does not match `K-CF-1100-RK2`. `expected_answer` is a short reference for the optional judge model.
+
+The string grade is deliberately simple: anyone can read the criterion, it costs nothing and it is the same every run. Its limit is negation: an answer that says "use RK2, not RK" fails the `must_not_contain` check even though it is right. That is what `--judge` is for; run it when the string grade and your eyes disagree.
 
 ## Metrics
 
@@ -53,7 +57,10 @@ semantic-current-prefer-current  (35 questions)
 | `mrr` | mean of 1 / rank of the first expected document | sensitive to ordering; the metric to compare modes with |
 | `part@3` | an expected part number appears in the `part_numbers` of the top 3 passages | the look-alike test |
 | `stale@1` | the top passage is archived or community | should be 0 in production; anything else is a filter or metadata gap |
-| `answer_ok` | with `--answer`: a judge model compared the generated answer with `expected_answer` | the end-to-end number, slower and noisier; run it before releases, not on every tweak |
+| `noncanon@1` | the top passage is a non-canonical copy (SharePoint duplicate) | same, for the canonical-source rule |
+| `contam@5` | any of the top 5 passages is archived, community or non-canonical | the passages the model actually reads contain a contradicting source. `hit@1` can be perfect while this is high: the ranking is right and the answer is still a coin toss unless the prompt is told which passage to trust |
+| `answer_ok` | with `--answer`: the generated answer contains every `must_contain` string and no `must_not_contain` string | the end-to-end number, deterministic; two chat calls per question |
+| `judge_ok` | with `--answer --judge`: a second model compared the answer with `expected_answer` | catches negation and paraphrase that the string grade misses; slower and noisier |
 
 Results are saved to `results/<timestamp>-<label>.json`. Compare two runs:
 
@@ -83,7 +90,7 @@ If a run does not move in the expected direction, that is the point: something i
 ## Building an evaluation set for your own assistant
 
 1. **Collect real questions.** Chat logs, support tickets, the "it got this wrong" emails. 50 is enough to start; 200 is comfortable. Include the ones that currently fail and the ones that currently work, in roughly the proportion reps ask them.
-2. **Write the expected answer with a subject matter expert**, not from the assistant's output. Where the answer is a part number or a value, record exactly that.
+2. **Write the expected answer with a subject matter expert**, not from the assistant's output. Where the answer is a part number or a value, record exactly that as `must_contain`, and record the known wrong value (the old kit, the superseded capacity) as `must_not_contain`.
 3. **Record which documents contain the answer** (`expected_doc_ids`). This is what makes retrieval measurable without a model in the loop.
 4. **Categorize.** Categories should map to failure modes you care about (exact lookup, spec value, policy, stale trap, descriptive), because averages hide regressions: a change can raise the overall score while breaking one category.
 5. **Add trap questions on purpose.** For every document you know is stale or duplicated, write a question whose correct answer differs between the old and new version. `stale@1` only means something if the set contains traps.

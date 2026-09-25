@@ -10,9 +10,12 @@ Run one question against the index and show what the retriever returns.
 
 Flags
     --current            shortcut for --filter "status eq 'current'"
+    --canonical          shortcut for --filter "is_canonical eq true" (module 02, duplicate copies)
     --filter EXPR        any OData filter, e.g. "brand eq 'Contoso Flow' and doc_type ne 'community_post'"
     --profile NAME       scoring profile (prefer-current)
     --answer             also generate a grounded answer with the chat model
+    --no-metadata        with --answer: passages go to the model as bare text (no status, source, tier, date);
+                         run it a few times on a question with a contaminated context and watch the answer change
     --top N              passages to return (default 5)
 """
 
@@ -32,8 +35,10 @@ def print_rows(rows, width=100):
         return
     for i, r in enumerate(rows, 1):
         flag = "" if r["status"] == "current" else f"  <-- {r['status'].upper()}"
+        if r["status"] == "current" and r.get("is_canonical") is False:
+            flag = f"  <-- NOT CANONICAL ({r.get('source')})"
         rr = f"  reranker={r['reranker_score']:.2f}" if r["reranker_score"] is not None else ""
-        print(f"{i:2d}. score={r['score']:.4f}{rr}  {r['doc_id']}  [{r['doc_type']}, {r['effective_date']}]{flag}")
+        print(f"{i:2d}. score={r['score']:.4f}{rr}  {r['doc_id']}  [{r['doc_type']}, {r.get('source')}, {r['effective_date']}]{flag}")
         if r["part_numbers"]:
             print(f"    parts: {', '.join(r['part_numbers'])}")
         snippet = r["caption"] or r["content"]
@@ -48,16 +53,16 @@ def main():
     ap.add_argument("--mode", default="hybrid", choices=retrieval.MODES)
     ap.add_argument("--top", type=int, default=5)
     ap.add_argument("--filter")
-    ap.add_argument("--current", action="store_true")
+    ap.add_argument("--current", action="store_true", help="filter: status eq 'current'")
+    ap.add_argument("--canonical", action="store_true", help="filter: is_canonical eq true (drops non-canonical copies)")
     ap.add_argument("--profile")
     ap.add_argument("--no-normalize", action="store_true", help="do not add normalized part numbers to the search text")
     ap.add_argument("--answer", action="store_true")
+    ap.add_argument("--no-metadata", action="store_true", help="with --answer: send passages as plain text, without doc_id, status, source or date")
     ap.add_argument("--show-request", action="store_true")
     args = ap.parse_args()
 
-    filter_expr = args.filter
-    if args.current:
-        filter_expr = "status eq 'current'" if not filter_expr else f"({filter_expr}) and status eq 'current'"
+    filter_expr = retrieval.build_filter(args.filter, args.current, args.canonical)
 
     body, rows = retrieval.run(args.question, args.mode, top=args.top, filter_expr=filter_expr,
                                scoring_profile=args.profile, normalize_parts=not args.no_normalize)
@@ -68,7 +73,7 @@ def main():
     print_rows(rows)
     if args.answer:
         print("=" * 80)
-        print(retrieval.answer(args.question, rows))
+        print(retrieval.answer(args.question, rows, with_metadata=not args.no_metadata))
         print()
 
 

@@ -6,7 +6,10 @@ doc_type: spec_sheet
 status: current
 effective_date: 2023-06-01
 part_numbers: ["ND-515-A", "ND-515-AR"]
-source_url: https://www.contoso-water.example/current/spec-ND-515-A
+source: website
+source_tier: 1
+is_canonical: true
+source_url: https://www.contoso-water.example/spec-ND-515-A
 ---
 
 # FloorGuard 5 in Round Floor Drain, nickel bronze strainer

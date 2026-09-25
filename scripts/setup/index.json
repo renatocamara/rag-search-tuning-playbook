@@ -13,6 +13,9 @@
     { "name": "doc_type", "type": "Edm.String", "filterable": true, "facetable": true },
     { "name": "status", "type": "Edm.String", "filterable": true, "facetable": true },
     { "name": "effective_date", "type": "Edm.DateTimeOffset", "filterable": true, "sortable": true, "facetable": true },
+    { "name": "source", "type": "Edm.String", "filterable": true, "facetable": true },
+    { "name": "source_tier", "type": "Edm.Int32", "filterable": true, "sortable": true, "facetable": true },
+    { "name": "is_canonical", "type": "Edm.Boolean", "filterable": true, "facetable": true },
 
     { "name": "part_numbers", "type": "Collection(Edm.String)", "searchable": true, "filterable": true, "facetable": true, "analyzer": "part_number_exact" },
     { "name": "part_numbers_normalized", "type": "Collection(Edm.String)", "searchable": true, "filterable": true, "analyzer": "part_number_exact" },

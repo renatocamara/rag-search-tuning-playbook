@@ -6,7 +6,10 @@ doc_type: warranty
 status: archived
 effective_date: 2021-01-01
 part_numbers: []
-source_url: https://www.contoso-water.example/archive/warranty-policy-2021
+source: archive
+source_tier: 4
+is_canonical: false
+source_url: https://archive.contoso-water.example/warranty-policy-2021
 ---
 
 

@@ -6,7 +6,10 @@ doc_type: faq
 status: current
 effective_date: 2025-06-01
 part_numbers: ["CF-1100-XL", "CF-1100-XLS", "CF-1250-S", "CF-1250-SB", "K-CF-1100-RK2", "K-CF-1250-CART"]
-source_url: https://www.contoso-water.example/current/faq-contoso-flow
+source: helpcenter
+source_tier: 2
+is_canonical: true
+source_url: https://help.contoso-water.example/faq-contoso-flow
 ---
 
 

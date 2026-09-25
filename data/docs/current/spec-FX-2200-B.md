@@ -6,7 +6,10 @@ doc_type: spec_sheet
 status: current
 effective_date: 2025-02-01
 part_numbers: ["FX-2200-B", "K-FX-2200-FLT"]
-source_url: https://www.contoso-water.example/current/spec-FX-2200-B
+source: website
+source_tier: 1
+is_canonical: true
+source_url: https://www.contoso-water.example/spec-FX-2200-B
 ---
 
 # HydroFill Bottle Filling Station, non-refrigerated

@@ -6,7 +6,10 @@ doc_type: bulletin
 status: current
 effective_date: 2024-07-01
 part_numbers: ["CF-1101-XL", "CF-1100-XL", "K-CF-1100-RK", "K-CF-1100-RK2"]
-source_url: https://www.contoso-water.example/current/bulletin-2024-07-CF-1101-XL
+source: website
+source_tier: 1
+is_canonical: true
+source_url: https://www.contoso-water.example/bulletin-2024-07-CF-1101-XL
 ---
 
 

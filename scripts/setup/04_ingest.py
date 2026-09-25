@@ -7,7 +7,8 @@ decision that affects retrieval quality is visible:
 
   * which sources go into the index               --source
   * how documents are chunked                     --chunking naive | structured
-  * what metadata travels with every chunk         (brand, doc_type, status, effective_date, part_numbers)
+  * what metadata travels with every chunk         (brand, doc_type, status, effective_date, part_numbers,
+                                                    source, source_tier, is_canonical)
   * how changes and deletions are detected         content_hash per document, --sync
 
 Examples
@@ -82,6 +83,9 @@ def build_chunks(meta, body, strategy, known_parts):
             "doc_type": meta.get("doc_type", ""),
             "status": meta.get("status", ""),
             "effective_date": f"{meta.get('effective_date', '2000-01-01')}T00:00:00Z",
+            "source": meta.get("source", ""),
+            "source_tier": int(meta.get("source_tier", 1)),
+            "is_canonical": bool(meta.get("is_canonical", True)),
             "part_numbers": chunk_parts,
             "part_numbers_normalized": [common.normalize_part_number(p) for p in chunk_parts],
             "source_url": meta.get("source_url", ""),

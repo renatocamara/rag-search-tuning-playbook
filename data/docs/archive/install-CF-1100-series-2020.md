@@ -6,7 +6,10 @@ doc_type: install_guide
 status: archived
 effective_date: 2020-02-01
 part_numbers: ["CF-1100-XL", "CF-1101-XL", "K-CF-1100-RK"]
-source_url: https://www.contoso-water.example/archive/install-CF-1100-series-2020
+source: archive
+source_tier: 4
+is_canonical: false
+source_url: https://archive.contoso-water.example/install-CF-1100-series-2020
 ---
 
 

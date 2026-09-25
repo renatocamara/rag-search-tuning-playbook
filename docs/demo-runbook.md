@@ -26,6 +26,8 @@ python scripts/eval/run_eval.py --mode semantic --current --profile prefer-curre
 
 Keep two terminals open: one for commands, one with `data/docs/current/spec-CF-1100-XLS.md` visible for the chunking part. Increase the terminal font.
 
+Record a screen capture of sections 1 to 3 once everything works. A recorded demo costs less credibility than a failed live one.
+
 ## Five minutes before
 
 ```bash
@@ -33,6 +35,8 @@ python scripts/pre_demo_check.py
 ```
 
 *Every line `[ok]`; hostnames resolve to private addresses (10.x or 192.168.x). If a service resolves to a public IP you are not on the VPN.*
+
+Drive the demo from the scripts, not from the portal. With public network access disabled, portal blades such as Search Explorer make data plane calls from your browser and fail unless the browser resolves the private endpoint. If you intend to show a portal screen, test that exact blade end to end beforehand.
 
 ## 1. The problem (3 minutes)
 
@@ -95,6 +99,15 @@ python scripts/demo/query.py "rough-in for the CF-1101-XL" --mode semantic --pro
 
 *With the filter, a discontinued product is unanswerable. With the scoring profile, the archived sheet is still found but ranked under the current bulletin. "Filter for what must never be used, profile for what should usually lose."*
 
+```bash
+python scripts/demo/query.py "What is the filter capacity of the FX-2200-B?" --mode semantic --current
+python scripts/demo/query.py "What is the filter capacity of the FX-2200-B?" --mode semantic --current --canonical
+```
+
+*The SharePoint copy is current, official and wrong for this question. Only a canonical-source rule separates it from the website version. "Deduplication is not enough; you need a rule for which copy wins."*
+
+Listen for: whether anyone knows which sources are in the index today, whether archive and community were a deliberate choice, and whether the same spec exists in more than one system.
+
 ## 4. Chunking (4 minutes)
 
 Show the spec sheet file in the second terminal: prose first, table last.
@@ -135,6 +148,13 @@ python scripts/eval/run_eval.py --compare results/<semantic-current>.json result
 *First comparison: `hit@1` up sharply, `stale@1` to zero, and a per-question list of what changed. Second comparison: the scoring profile, if it lowers `hit@1`, is the proof that tuning without measurement goes backwards. "This is the artifact to keep: every change to the index or the query gets this comparison before it ships."*
 
 Close with module 05 in one sentence (change detection, deletion, cache invalidation are three separate mechanisms; a weekly crawl is one of them) and module 07 if the audience is planning an external phase.
+
+## What not to do
+
+* Do not say an implementation is wrong. Show the mechanism on Contoso data and let the audience map it to their own system.
+* Do not walk through the audience's architecture back to them. Ask how each layer decides.
+* Do not quote the synthetic catalog as real product data, and do not put a customer's real part numbers into the public repository.
+* Do not type commands live; paste them from this file.
 
 ## Backup plan
 

@@ -4,6 +4,7 @@ room what changes when you move from vector only to hybrid to semantic.
 
     python scripts/demo/compare.py "What repair kit fits the CF-1100-XLS?"
     python scripts/demo/compare.py "What repair kit fits the CF-1100-XLS?" --current
+    python scripts/demo/compare.py "What is the filter capacity of the FX-2200-B?" --current --canonical
     python scripts/demo/compare.py "warranty on HydroFill bottle fillers" --profile prefer-current
     python scripts/demo/compare.py "..." --modes vector hybrid --top 3
 """
@@ -22,14 +23,13 @@ def main():
     ap.add_argument("--modes", nargs="*", default=list(retrieval.MODES), choices=retrieval.MODES)
     ap.add_argument("--top", type=int, default=3)
     ap.add_argument("--filter")
-    ap.add_argument("--current", action="store_true")
+    ap.add_argument("--current", action="store_true", help="filter: status eq 'current'")
+    ap.add_argument("--canonical", action="store_true", help="filter: is_canonical eq true (drops non-canonical copies)")
     ap.add_argument("--profile")
     ap.add_argument("--no-normalize", action="store_true")
     args = ap.parse_args()
 
-    filter_expr = args.filter
-    if args.current:
-        filter_expr = "status eq 'current'" if not filter_expr else f"({filter_expr}) and status eq 'current'"
+    filter_expr = retrieval.build_filter(args.filter, args.current, args.canonical)
 
     print(f"\nQ: {args.question}")
     print(f"filter={filter_expr or '-'}  profile={args.profile or '-'}\n")
@@ -39,6 +39,8 @@ def main():
         print(f"--- {mode.upper()} ---")
         for i, r in enumerate(rows, 1):
             flag = "" if r["status"] == "current" else f"   <-- {r['status'].upper()}"
+            if r["status"] == "current" and r.get("is_canonical") is False:
+                flag = f"   <-- NOT CANONICAL ({r.get('source')})"
             parts = f"  parts={','.join(r['part_numbers'])}" if r["part_numbers"] else ""
             print(f"  {i}. {r['doc_id']:38s} {r['section'][:28]:28s}{parts}{flag}")
         print()

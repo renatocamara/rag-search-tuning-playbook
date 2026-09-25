@@ -6,7 +6,10 @@ doc_type: service_parts
 status: current
 effective_date: 2023-06-01
 part_numbers: ["ND-415-A", "ND-415-AS", "ND-515-A", "ND-600-CO", "ND-415-AR", "ND-515-AR", "ND-415-SB"]
-source_url: https://www.contoso-water.example/current/service-parts-ND-series
+source: website
+source_tier: 1
+is_canonical: true
+source_url: https://www.contoso-water.example/service-parts-ND-series
 ---
 
 

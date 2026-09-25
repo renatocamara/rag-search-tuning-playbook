@@ -9,7 +9,9 @@ the right document come back, and how high) and, optionally, answer quality
     python scripts/eval/run_eval.py --mode vector
     python scripts/eval/run_eval.py --mode hybrid
     python scripts/eval/run_eval.py --mode semantic --current --profile prefer-current
-    python scripts/eval/run_eval.py --mode semantic --current --answer         # slower, calls the chat model twice per question
+    python scripts/eval/run_eval.py --mode semantic --current --canonical
+    python scripts/eval/run_eval.py --mode semantic --current --answer         # also generate answers, graded by strings
+    python scripts/eval/run_eval.py --mode semantic --current --answer --judge # plus a second model as judge (slower)
     python scripts/eval/run_eval.py --compare results/<a>.json results/<b>.json
 
 Metrics (per question, then averaged overall and per category)
@@ -17,7 +19,12 @@ Metrics (per question, then averaged overall and per category)
     mrr                   1 / rank of the first expected doc_id (0 if none in top 5)
     part@3                an expected part number appears in the part_numbers of the top 3 passages
     stale@1               the top passage is not 'current' (archived or community): lower is better
-    answer_ok             (with --answer) the judge model marked the answer correct
+    noncanon@1            the top passage is a non-canonical copy (for example the SharePoint duplicate): lower is better
+    contam@5              any of the top 5 passages is archived, community or non-canonical, i.e. the model receives
+                          a contradicting source even if the top passage is right: lower is better
+    answer_ok             (with --answer) the generated answer contains every must_contain string and none of
+                          the must_not_contain strings (deterministic, no model involved)
+    judge_ok              (with --judge) a second model compared the answer with expected_answer
 
 Results are written to results/<timestamp>-<label>.json for later comparison.
 """
@@ -25,6 +32,7 @@ Results are written to results/<timestamp>-<label>.json for later comparison.
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from collections import defaultdict
@@ -57,10 +65,24 @@ def score(q, rows):
         "mrr": (1.0 / first) if first else 0.0,
         "part@3": 1.0 if part_ok else 0.0,
         "stale@1": 1.0 if rows and rows[0]["status"] != "current" else 0.0,
+        "noncanon@1": 1.0 if rows and rows[0].get("is_canonical") is False else 0.0,
+        "contam@5": 1.0 if any(r["status"] != "current" or r.get("is_canonical") is False for r in rows[:5]) else 0.0,
         "first_rank": first,
         "top1": rows[0]["doc_id"] if rows else None,
         "top1_status": rows[0]["status"] if rows else None,
     }
+
+
+def _present(needle, text):
+    """Whole-token match, case-insensitive, so that 'K-CF-1100-RK' does not match 'K-CF-1100-RK2'."""
+    return re.search(r"(?<![A-Za-z0-9])" + re.escape(needle) + r"(?![A-Za-z0-9])", text, re.IGNORECASE) is not None
+
+
+def grade_strings(q, answer_text):
+    """Deterministic grading: every must_contain present, no must_not_contain present."""
+    ok = all(_present(x, answer_text) for x in q.get("must_contain", []))
+    bad = any(_present(x, answer_text) for x in q.get("must_not_contain", []))
+    return 1.0 if ok and not bad else 0.0
 
 
 def judge(q, answer_text):
@@ -69,7 +91,8 @@ def judge(q, answer_text):
 
 
 def summarize(results):
-    keys = ["hit@1", "hit@3", "hit@5", "mrr", "part@3", "stale@1"] + (["answer_ok"] if "answer_ok" in results[0] else [])
+    keys = ["hit@1", "hit@3", "hit@5", "mrr", "part@3", "stale@1", "noncanon@1", "contam@5"]
+    keys += [k for k in ("answer_ok", "judge_ok") if k in results[0]]
     overall = {k: sum(r[k] for r in results) / len(results) for k in keys}
     by_cat = defaultdict(list)
     for r in results:
@@ -80,10 +103,10 @@ def summarize(results):
 
 def print_summary(label, keys, overall, cats, n):
     print(f"\n{label}  ({n} questions)")
-    print("  " + "category".ljust(18) + "".join(k.rjust(10) for k in keys))
-    print("  " + "ALL".ljust(18) + "".join(f"{overall[k]:10.2f}" for k in keys))
+    print("  " + "category".ljust(18) + "".join(k.rjust(11) for k in keys))
+    print("  " + "ALL".ljust(18) + "".join(f"{overall[k]:11.2f}" for k in keys))
     for c, m in cats.items():
-        print("  " + c.ljust(18) + "".join(f"{m[k]:10.2f}" for k in keys))
+        print("  " + c.ljust(18) + "".join(f"{m[k]:11.2f}" for k in keys))
 
 
 def compare(a_path, b_path):
@@ -111,10 +134,13 @@ def main():
     ap.add_argument("--mode", default="hybrid", choices=retrieval.MODES)
     ap.add_argument("--top", type=int, default=5)
     ap.add_argument("--filter")
-    ap.add_argument("--current", action="store_true")
+    ap.add_argument("--current", action="store_true", help="filter: status eq 'current'")
+    ap.add_argument("--canonical", action="store_true", help="filter: is_canonical eq true (drops non-canonical copies)")
     ap.add_argument("--profile")
     ap.add_argument("--no-normalize", action="store_true")
-    ap.add_argument("--answer", action="store_true", help="generate answers and judge them (slower)")
+    ap.add_argument("--answer", action="store_true", help="generate answers and grade them with must_contain strings")
+    ap.add_argument("--judge", action="store_true", help="with --answer: also ask a second model to judge (slower)")
+    ap.add_argument("--no-metadata", action="store_true", help="with --answer: passages sent as bare text, no labels")
     ap.add_argument("--label", help="name for this run (default: built from the options)")
     ap.add_argument("--only", nargs="*", help="run only these question ids")
     ap.add_argument("--compare", nargs=2, metavar="JSON", help="compare two result files instead of running")
@@ -124,12 +150,11 @@ def main():
         compare(*args.compare)
         return
 
-    filter_expr = args.filter
-    if args.current:
-        filter_expr = "status eq 'current'" if not filter_expr else f"({filter_expr}) and status eq 'current'"
+    filter_expr = retrieval.build_filter(args.filter, args.current, args.canonical)
     label = args.label or "-".join(x for x in [
-        args.mode, "current" if args.current else None, args.profile, "nonorm" if args.no_normalize else None,
-        "answer" if args.answer else None] if x)
+        args.mode, "current" if args.current else None, "canonical" if args.canonical else None, args.profile,
+        "nonorm" if args.no_normalize else None, "answer" if args.answer else None,
+        "nometa" if args.no_metadata else None] if x)
 
     questions = load_eval()
     if args.only:
@@ -141,14 +166,17 @@ def main():
                                 scoring_profile=args.profile, normalize_parts=not args.no_normalize)
         s = score(q, rows)
         if args.answer:
-            ans = retrieval.answer(q["question"], rows)
+            ans = retrieval.answer(q["question"], rows, with_metadata=not args.no_metadata)
             s["answer"] = ans
-            s["answer_ok"] = judge(q, ans)
+            s["answer_ok"] = grade_strings(q, ans)
+            if args.judge:
+                s["judge_ok"] = judge(q, ans)
         s.update(id=q["id"], category=q["category"], question=q["question"])
         results.append(s)
         mark = "ok " if s["hit@3"] else "MISS"
-        stale = " stale-top1" if s["stale@1"] else ""
-        print(f"  {mark} {q['id']} [{q['category']:15s}] rank={s['first_rank'] or '-'} top1={s['top1']}{stale}")
+        stale = " stale-top1" if s["stale@1"] else (" noncanonical-top1" if s["noncanon@1"] else "")
+        ans = "" if not args.answer else ("  answer=ok" if s["answer_ok"] else "  answer=WRONG")
+        print(f"  {mark} {q['id']} [{q['category']:15s}] rank={s['first_rank'] or '-'} top1={s['top1']}{stale}{ans}")
 
     keys, overall, cats = summarize(results)
     print_summary(label, keys, overall, cats, len(results))

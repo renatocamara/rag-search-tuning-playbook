@@ -37,7 +37,7 @@ Underneath those symptoms were four root causes, and they are the four things th
 | Root cause | Symptom | Module |
 |---|---|---|
 | Retrieval is vector only, part numbers are not matched exactly | Wrong part, look-alike confusion | [01](modules/01-inspect-your-query.md) |
-| Archived, community and current content share one index with no metadata | Old answers, contradictory passages | [02](modules/02-clean-index.md) |
+| Archived, community, duplicate and current content share one index with no metadata or canonical-copy rule | Old answers, contradictory passages | [02](modules/02-clean-index.md) |
 | Fixed-size chunking cuts tables away from their headings | Wrong value, "not found" | [03](modules/03-chunking-spec-sheets.md) |
 | Structured facts (prices, kits, equivalents, status) are looked up by similarity instead of by key | Wrong or missing facts | [04](modules/04-structured-lookup.md) |
 
@@ -47,7 +47,7 @@ Two more modules cover what keeps the fixes working: [05 Freshness](modules/05-f
 
 * How to **inspect the query your application actually sends** to Azure AI Search and see the difference between vector, keyword, hybrid and semantic retrieval on the same question.
 * Why an **analyzer** decides whether "CF-1100-XLS", "cf1100xls" and "CF 1100 XLS" find the same document.
-* How to use **metadata filters and scoring profiles** to keep archived and user generated content from outranking official current content.
+* How to use **metadata filters, a canonical-copy rule and scoring profiles** to keep archived, user generated and duplicated content from outranking official current content.
 * How to **chunk documents with tables** so each chunk carries the product it belongs to.
 * When to answer from **Cosmos DB** instead of the index, and how to combine both.
 * How to detect **changed and deleted** documents and keep a cache from serving yesterday's answer.
@@ -111,7 +111,7 @@ modules/
 data/
   catalog/                     parts.json, cross_reference.json (Cosmos DB)
   docs/current|archive|community/   Markdown documents with front matter metadata (Blob Storage)
-  eval/eval_set.jsonl          35 questions with expected part numbers, documents and answers
+  eval/eval_set.jsonl          37 questions with expected documents, part numbers and grading strings
 scripts/
   data/generate_contoso_data.py   regenerates everything under data/
   setup/                       01_storage.py, 02_cosmos.py, 03_index.py (+ index.json), 04_ingest.py

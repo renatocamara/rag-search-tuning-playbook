@@ -6,7 +6,10 @@ doc_type: warranty
 status: current
 effective_date: 2026-01-01
 part_numbers: []
-source_url: https://www.contoso-water.example/current/warranty-policy-2026
+source: website
+source_tier: 1
+is_canonical: true
+source_url: https://www.contoso-water.example/warranty-policy-2026
 ---
 
 

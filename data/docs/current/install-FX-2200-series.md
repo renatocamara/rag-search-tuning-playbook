@@ -6,7 +6,10 @@ doc_type: install_guide
 status: current
 effective_date: 2025-02-01
 part_numbers: ["FX-2200-B", "FX-2200-BR", "K-FX-2200-FLT"]
-source_url: https://www.contoso-water.example/current/install-FX-2200-series
+source: website
+source_tier: 1
+is_canonical: true
+source_url: https://www.contoso-water.example/install-FX-2200-series
 ---
 
 

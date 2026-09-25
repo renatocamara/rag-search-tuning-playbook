@@ -22,6 +22,9 @@ python scripts/setup/03_index.py --recreate    # drop and create (after changing
 | `doc_type` | String | filterable, facetable | `spec_sheet`, `install_guide`, `warranty`, `bulletin`, `faq`, `cross_reference`, `service_parts`, `community_post` |
 | `status` | String | filterable, facetable | `current`, `archived`, `community` (the key field for module 02) |
 | `effective_date` | DateTimeOffset | filterable, sortable, facetable | Freshness boosting and "as of" filters |
+| `source` | String | filterable, facetable | `website`, `helpcenter`, `sharepoint`, `archive`, `community` |
+| `source_tier` | Int32 | filterable, sortable, facetable | 1 official website to 5 user generated; the grounding prompt prefers lower tiers when passages disagree |
+| `is_canonical` | Boolean | filterable, facetable | The copy that is authoritative for this document; filter `is_canonical eq true` drops SharePoint duplicates at older revisions (module 02) |
 | `part_numbers` | Collection(String) | searchable, filterable, facetable, analyzer `part_number_exact` | Part numbers as written in the chunk |
 | `part_numbers_normalized` | Collection(String) | searchable, filterable, analyzer `part_number_exact` | Same, lowercased with separators removed (`cf1100xls`) |
 | `source_url` | String | retrievable | Citation link |

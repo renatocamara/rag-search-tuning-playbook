@@ -11,3 +11,6 @@ results/*
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Customer-specific working notes, never committed
+private/

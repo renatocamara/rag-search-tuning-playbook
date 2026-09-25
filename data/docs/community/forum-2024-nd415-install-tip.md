@@ -6,7 +6,10 @@ doc_type: community_post
 status: community
 effective_date: 2024-09-11
 part_numbers: ["ND-415-A", "ND-415-AR"]
-source_url: https://www.contoso-water.example/community/forum-2024-nd415-install-tip
+source: community
+source_tier: 5
+is_canonical: false
+source_url: https://community.contoso-water.example/forum-2024-nd415-install-tip
 ---
 
 

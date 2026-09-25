@@ -6,7 +6,7 @@
 
 | Component | Role in the solution | What this playbook does with it |
 |---|---|---|
-| **Blob Storage** | System of record for documents (spec sheets, install guides, warranty policies, bulletins, FAQs, community posts). One container, one folder per source. Every blob carries metadata: `doc_id`, `brand`, `doc_type`, `status`, `effective_date`, `part_numbers`. | `scripts/setup/01_storage.py` uploads `data/docs/**`. `04_ingest.py` reads from here. |
+| **Blob Storage** | System of record for documents (spec sheets, install guides, warranty policies, bulletins, FAQs, community posts). One container, one folder per status. Every blob carries metadata: `doc_id`, `brand`, `doc_type`, `status`, `effective_date`, `part_numbers`, `source`, `source_tier`, `is_canonical`. | `scripts/setup/01_storage.py` uploads `data/docs/**`. `04_ingest.py` reads from here. |
 | **Cosmos DB** | System of record for structured product data: the `parts` container (one item per part number: status, price, repair kit, what it replaces) and `crossReference` (competitor part to Contoso part). | `02_cosmos.py` loads `data/catalog/*.json`. Module 04 queries it before searching. |
 | **Azure AI Search** | The retrieval engine. One index, `contoso-kb`, holds chunks with a vector, full text, and the metadata above. Configured for hybrid search (BM25 + HNSW vector), semantic ranking, a custom analyzer for part numbers, and a scoring profile that prefers current content. | `03_index.py` creates it from `scripts/setup/index.json`. Every module changes how it is queried or what goes into it. |
 | **Azure OpenAI** | `text-embedding-3-large` for embeddings (query and chunks), `gpt-4.1-mini` for grounded answers and as the judge in evaluation. | Called through Entra ID from `scripts/common.py`. |
@@ -29,7 +29,7 @@
 ### Query (`/query`)
 
 1. Detect part numbers in the question. If there are any, look them up in Cosmos DB first (module 04). This resolves status, price, replacement and equivalents with certainty.
-2. Build the search request: text query plus vector query (hybrid), semantic configuration, a filter (`status eq 'current'` at minimum, plus brand or doc type when known), and the `prefer-current` scoring profile.
+2. Build the search request: text query plus vector query (hybrid), semantic configuration, a filter (`status eq 'current' and is_canonical eq true` at minimum, plus brand or doc type when known), and optionally the `prefer-current` scoring profile.
 3. Send it to Azure AI Search and take the top passages.
 4. Give the model the catalog facts and the passages, with their `doc_id`, `status` and `effective_date`, and ask for an answer that cites its sources and prefers current documents.
 
@@ -44,7 +44,7 @@
 
 | Design choice | Reason |
 |---|---|
-| One index for all sources, with `status` and `doc_type` fields | Filtering at query time is cheaper and more flexible than separate indexes, and lets you run "what would the answer be if archive were excluded" as an experiment. |
+| One index for all sources, with `status`, `source`, `source_tier`, `is_canonical` and `doc_type` fields | Filtering at query time is cheaper and more flexible than separate indexes, and lets you run "what would the answer be if archive were excluded" as an experiment. |
 | `part_numbers` with a custom analyzer (`keyword_v2` tokenizer + `lowercase`) | Standard analyzers split `CF-1100-XLS` into `cf`, `1100`, `xls`, which also match `CF-1100-XL`. The keyword tokenizer keeps the whole string as one token. Lowercasing makes the match case-insensitive. |
 | `part_numbers_normalized` | Users type `cf1100xls` or `CF 1100 XLS`. The query side normalizes the same way, so all forms hit. |
 | Contextual header in every chunk | A chunk with "Repair kit: K-CF-1100-RK2" is useless unless it also says which product the table belongs to. |

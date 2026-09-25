@@ -6,7 +6,10 @@ doc_type: spec_sheet
 status: current
 effective_date: 2024-07-01
 part_numbers: ["CF-1100-XL", "K-CF-1100-RK2"]
-source_url: https://www.contoso-water.example/current/spec-CF-1100-XL
+source: website
+source_tier: 1
+is_canonical: true
+source_url: https://www.contoso-water.example/spec-CF-1100-XL
 ---
 
 # AquaSense Manual Flush Valve 1.28 gpf

@@ -45,12 +45,13 @@ def upload(only=None):
                 text = f.read()
             meta, _ = common.parse_front_matter(text)
             blob_name = f"{folder}/{name}"
-            metadata = {k: str(meta.get(k, "")) for k in ("doc_id", "brand", "doc_type", "status", "effective_date")}
+            metadata = {k: str(meta.get(k, "")) for k in ("doc_id", "brand", "doc_type", "status", "effective_date",
+                                                           "source", "source_tier", "is_canonical")}
             metadata["part_numbers"] = ",".join(meta.get("part_numbers", []))
             container.upload_blob(blob_name, text.encode("utf-8"), overwrite=True, metadata=metadata,
                                   content_settings=ContentSettings(content_type="text/markdown"))
             n += 1
-            print(f"  uploaded {blob_name}  [{metadata['status']}, {metadata['doc_type']}]")
+            print(f"  uploaded {blob_name}  [{metadata['status']}, {metadata['doc_type']}, {metadata['source']}]")
     print(f"{n} blobs in {common.STORAGE_ACCOUNT}/{common.STORAGE_CONTAINER}")
 
 

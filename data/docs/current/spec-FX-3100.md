@@ -6,7 +6,10 @@ doc_type: spec_sheet
 status: current
 effective_date: 2022-09-01
 part_numbers: ["FX-3100"]
-source_url: https://www.contoso-water.example/current/spec-FX-3100
+source: website
+source_tier: 1
+is_canonical: true
+source_url: https://www.contoso-water.example/spec-FX-3100
 ---
 
 # SteelCare Single Bowl Stainless Sink 25 x 22 in

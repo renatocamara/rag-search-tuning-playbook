@@ -286,6 +286,10 @@ def parse_front_matter(text):
                 v = json.loads(v)
             except ValueError:
                 pass
+        elif v.lower() in ("true", "false"):
+            v = v.lower() == "true"
+        elif v.isdigit():
+            v = int(v)
         meta[k.strip()] = v
     return meta, text[end + 4:].lstrip("\n")
 

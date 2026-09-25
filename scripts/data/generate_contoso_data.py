@@ -185,7 +185,22 @@ CROSS_REFERENCE = [
 # 2. Documents
 # ---------------------------------------------------------------------------
 
-def front_matter(doc_id, title, brand, doc_type, status, effective_date, part_numbers, source_url):
+# Where content comes from, and how much it should be trusted when two sources disagree.
+# Tier 1 is official and current, 2 is curated support content, 3 is an internal copy that may
+# lag the official version, 4 is an archive, 5 is user generated. The folder a document lives in
+# decides its default source; a document can override it (the SharePoint copy trap below).
+SOURCES = {
+    "website":    {"tier": 1, "label": "Contoso brand websites"},
+    "helpcenter": {"tier": 2, "label": "Customer Care help center"},
+    "sharepoint": {"tier": 3, "label": "SharePoint, Engineering library"},
+    "archive":    {"tier": 4, "label": "Archived website"},
+    "community":  {"tier": 5, "label": "Community forum"},
+}
+FOLDER_SOURCE = {"current": "website", "archive": "archive", "community": "community"}
+
+
+def front_matter(doc_id, title, brand, doc_type, status, effective_date, part_numbers, source_url,
+                 source="website", is_canonical=True):
     return (
         "---\n"
         f"doc_id: {doc_id}\n"
@@ -195,6 +210,9 @@ def front_matter(doc_id, title, brand, doc_type, status, effective_date, part_nu
         f"status: {status}\n"
         f"effective_date: {effective_date}\n"
         f"part_numbers: {json.dumps(part_numbers)}\n"
+        f"source: {source}\n"
+        f"source_tier: {SOURCES[source]['tier']}\n"
+        f"is_canonical: {'true' if is_canonical else 'false'}\n"
         f"source_url: {source_url}\n"
         "---\n\n"
     )
@@ -258,11 +276,17 @@ def write_docs():
     docs = []
     P = {p["id"]: p for p in PARTS}
 
-    def add(folder, doc_id, title, brand, doc_type, status, effective, parts, body):
-        url = f"https://www.contoso-water.example/{folder}/{doc_id}"
+    def add(folder, doc_id, title, brand, doc_type, status, effective, parts, body, source=None, is_canonical=None):
+        source = source or FOLDER_SOURCE[folder]
+        if is_canonical is None:
+            is_canonical = status == "current" and SOURCES[source]["tier"] <= 2
+        host = {"website": "www.contoso-water.example", "helpcenter": "help.contoso-water.example",
+                "sharepoint": "contoso.sharepoint.example/sites/engineering",
+                "archive": "archive.contoso-water.example", "community": "community.contoso-water.example"}[source]
+        url = f"https://{host}/{doc_id}"
         path = os.path.join(DATA, "docs", folder, f"{doc_id}.md")
-        w(path, front_matter(doc_id, title, brand, doc_type, status, effective, parts, url) + body)
-        docs.append(dict(doc_id=doc_id, folder=folder, status=status, doc_type=doc_type))
+        w(path, front_matter(doc_id, title, brand, doc_type, status, effective, parts, url, source, is_canonical) + body)
+        docs.append(dict(doc_id=doc_id, folder=folder, status=status, doc_type=doc_type, source=source))
 
     # --- Current spec sheets ---
     for pid in ["CF-1100-XL", "CF-1100-XLS", "CF-1250-M", "CF-1250-S", "CF-1250-SB",
@@ -455,7 +479,7 @@ Orders received for CF-1101-XL after the effective date will be converted to CF-
 """)
 
     add("current", "faq-contoso-flow", "Frequently asked questions, Contoso Flow", "Contoso Flow",
-        "faq", "current", "2025-06-01", ["CF-1100-XL", "CF-1100-XLS", "CF-1250-S", "CF-1250-SB", "K-CF-1100-RK2", "K-CF-1250-CART"], """
+        "faq", "current", "2025-06-01", ["CF-1100-XL", "CF-1100-XLS", "CF-1250-S", "CF-1250-SB", "K-CF-1100-RK2", "K-CF-1250-CART"], source="helpcenter", body="""
 # Frequently asked questions, Contoso Flow
 
 ## Which repair kit fits my AquaSense valve?
@@ -512,6 +536,21 @@ Use this guide to find the Contoso Water Solutions equivalent of a competitor pa
 Strainers are nickel bronze and secured with two vandal resistant screws. The 4 in strainer ND-415-AR does not fit the 5 in body ND-515-A even though the bolt pattern looks similar; the outer diameter differs by one inch.
 """)
 
+    # --- Duplicate at an older revision (the SharePoint trap) ---
+    # A genuine internal copy of the FX-2200-B spec sheet, saved in the engineering library
+    # before the 2025 filter change. It is not archived (nobody marked it), it is not wrong on
+    # purpose, it is simply not the canonical copy. Only a canonical-source rule separates it
+    # from the website version. Its status is 'current', so a status filter does not catch it.
+    # Same title, same prose, same part number as the website copy. Only the table values
+    # (filter, capacity, price) and the effective date differ, which is what a real duplicate
+    # at an older revision looks like. Nothing in the text tells a ranker which copy to prefer.
+    p = dict(P["FX-2200-B"], filterCapacity="1,500 gallons or 6 months", filter="K-FX-2210-FLT")
+    add("current", "spec-FX-2200-B-sharepoint", "Specification sheet FX-2200-B", p["brand"],
+        "spec_sheet", "current", "2023-04-10", ["FX-2200-B", "K-FX-2210-FLT"],
+        spec_sheet(p, effective="2023-04-10", price=1_180.00, kit="K-FX-2210-FLT",
+                   intro_extra="This model replaces the HydroFill Classic FX-2210-B."),
+        source="sharepoint", is_canonical=False)
+
     # --- Community posts (user generated, not authoritative) ---
     add("community", "forum-2022-cf1100-repair-kit", "Forum: Which repair kit for CF-1100-XL?", "Contoso Flow",
         "community_post", "community", "2022-04-18", ["CF-1100-XL", "K-CF-1100-RK"], """
@@ -557,114 +596,157 @@ EVAL = [
     # part number lookup, look-alike traps
     dict(id="q01", category="part_lookup", question="What repair kit fits the CF-1100-XLS?",
          expected_part_numbers=["K-CF-1100-RK2"], expected_doc_ids=["spec-CF-1100-XLS", "faq-contoso-flow", "install-CF-1100-series"],
+         must_contain=["K-CF-1100-RK2"], must_not_contain=["K-CF-1100-RK"],
          expected_answer="K-CF-1100-RK2"),
     dict(id="q02", category="part_lookup", question="Which sensor module does the CF-1100-XLS use?",
          expected_part_numbers=["S-CF-IR3"], expected_doc_ids=["spec-CF-1100-XLS", "install-CF-1100-series", "faq-contoso-flow"],
+         must_contain=["S-CF-IR3"], must_not_contain=[],
          expected_answer="S-CF-IR3 infrared sensor module, generation 3"),
     dict(id="q03", category="part_lookup", question="What is the list price of the CF-1100-XL?",
          expected_part_numbers=["CF-1100-XL"], expected_doc_ids=["spec-CF-1100-XL"],
+         must_contain=["412"], must_not_contain=["368", "385"],
          expected_answer="$412.00"),
     dict(id="q04", category="part_lookup", question="What is the flow rate of the CF-1100-XL?",
          expected_part_numbers=["CF-1100-XL"], expected_doc_ids=["spec-CF-1100-XL", "bulletin-2024-07-CF-1101-XL"],
+         must_contain=["1.28"], must_not_contain=["1.6 gpf"],
          expected_answer="1.28 gpf"),
     dict(id="q05", category="part_lookup", question="Is the CF-1101-XL still available?",
          expected_part_numbers=["CF-1101-XL", "CF-1100-XL"], expected_doc_ids=["bulletin-2024-07-CF-1101-XL", "spec-CF-1100-XL"],
+         must_contain=["discontinued", "CF-1100-XL"], must_not_contain=[],
          expected_answer="No, discontinued June 30, 2024, replaced by CF-1100-XL"),
     dict(id="q06", category="part_lookup", question="Which cartridge kit do I order for a CF-1250-SB faucet?",
          expected_part_numbers=["K-CF-1250-CART"], expected_doc_ids=["spec-CF-1250-SB", "faq-contoso-flow"],
+         must_contain=["K-CF-1250-CART"], must_not_contain=[],
          expected_answer="K-CF-1250-CART"),
     dict(id="q07", category="part_lookup", question="What power supply does the CF-1250-S need?",
          expected_part_numbers=["P-CF-24V"], expected_doc_ids=["spec-CF-1250-S", "faq-contoso-flow"],
+         must_contain=["P-CF-24V"], must_not_contain=[],
          expected_answer="P-CF-24V plug-in 24 VDC power supply"),
     dict(id="q08", category="part_lookup", question="Replacement strainer for ND-515-A?",
          expected_part_numbers=["ND-515-AR"], expected_doc_ids=["spec-ND-515-A", "service-parts-ND-series"],
+         must_contain=["ND-515-AR"], must_not_contain=[],
          expected_answer="ND-515-AR"),
     dict(id="q09", category="part_lookup", question="Does the ND-415-AR strainer fit the ND-515-A?",
          expected_part_numbers=["ND-415-AR", "ND-515-A", "ND-515-AR"], expected_doc_ids=["service-parts-ND-series"],
+         must_contain=["ND-515-AR"], must_not_contain=[],
          expected_answer="No, the outer diameter differs by one inch; use ND-515-AR"),
     dict(id="q10", category="part_lookup", question="What sediment bucket goes with the ND-415-AS?",
          expected_part_numbers=["ND-415-SB"], expected_doc_ids=["spec-ND-415-AS", "service-parts-ND-series"],
+         must_contain=["ND-415-SB"], must_not_contain=[],
          expected_answer="ND-415-SB"),
     # part number formatting variations
     dict(id="q11", category="part_format", question="repair kit for cf1100xls",
          expected_part_numbers=["K-CF-1100-RK2"], expected_doc_ids=["spec-CF-1100-XLS", "faq-contoso-flow", "install-CF-1100-series"],
+         must_contain=["K-CF-1100-RK2"], must_not_contain=[],
          expected_answer="K-CF-1100-RK2"),
     dict(id="q12", category="part_format", question="What filter does the FX 2200 BR take?",
          expected_part_numbers=["K-FX-2200-FLT"], expected_doc_ids=["spec-FX-2200-BR", "install-FX-2200-series"],
+         must_contain=["K-FX-2200-FLT"], must_not_contain=["K-FX-2210-FLT"],
          expected_answer="K-FX-2200-FLT"),
     dict(id="q13", category="part_format", question="price of ND415A",
          expected_part_numbers=["ND-415-A"], expected_doc_ids=["spec-ND-415-A"],
+         must_contain=["168"], must_not_contain=[],
          expected_answer="$168.00"),
     # spec values inside tables
     dict(id="q14", category="spec_value", question="What is the rough-in for the CF-1100-XLS?",
          expected_part_numbers=["CF-1100-XLS"], expected_doc_ids=["spec-CF-1100-XLS", "install-CF-1100-series"],
+         must_contain=["11.5"], must_not_contain=[],
          expected_answer="11.5 in from centerline of supply to finished wall"),
     dict(id="q15", category="spec_value", question="What supply pressure range does the CF-1100 series require?",
          expected_part_numbers=["CF-1100-XL", "CF-1100-XLS"], expected_doc_ids=["install-CF-1100-series"],
+         must_contain=["25", "80"], must_not_contain=["20 psi", "20 to 80"],
          expected_answer="25 to 80 psi flowing"),
     dict(id="q16", category="spec_value", question="How many gallons per hour does the FX-2200-BR chiller deliver?",
          expected_part_numbers=["FX-2200-BR"], expected_doc_ids=["spec-FX-2200-BR", "install-FX-2200-series"],
+         must_contain=["8"], must_not_contain=[],
          expected_answer="8 gph of 50 F water at 90 F ambient"),
     dict(id="q17", category="spec_value", question="What is the bowl depth of the FX-3100-D sink?",
          expected_part_numbers=["FX-3100-D"], expected_doc_ids=["spec-FX-3100-D"],
+         must_contain=["8 in"], must_not_contain=[],
          expected_answer="8 in"),
     dict(id="q18", category="spec_value", question="What outlet sizes are available on the ND-600-CO cleanout?",
          expected_part_numbers=["ND-600-CO"], expected_doc_ids=["spec-ND-600-CO", "service-parts-ND-series"],
+         must_contain=["3", "4"], must_not_contain=[],
          expected_answer="3 or 4 in no-hub"),
     dict(id="q19", category="spec_value", question="How high should the FX-2200-B nozzle be above the finished floor?",
          expected_part_numbers=["FX-2200-B"], expected_doc_ids=["install-FX-2200-series"],
+         must_contain=["42"], must_not_contain=[],
          expected_answer="42 in"),
     # cross reference
     dict(id="q20", category="cross_reference", question="What is the Contoso equivalent of Litware L-9450?",
          expected_part_numbers=["CF-1100-XL"], expected_doc_ids=["cross-reference-guide"],
+         must_contain=["CF-1100-XL"], must_not_contain=[],
          expected_answer="CF-1100-XL"),
     dict(id="q21", category="cross_reference", question="Customer has a Tailspin TS-BF200R. What do we offer?",
          expected_part_numbers=["FX-2200-BR"], expected_doc_ids=["cross-reference-guide"],
+         must_contain=["FX-2200-BR"], must_not_contain=[],
          expected_answer="FX-2200-BR"),
     dict(id="q22", category="cross_reference", question="Cross reference for Woodgrove WG-FD4-SB",
          expected_part_numbers=["ND-415-AS"], expected_doc_ids=["cross-reference-guide"],
+         must_contain=["ND-415-AS"], must_not_contain=[],
          expected_answer="ND-415-AS"),
     dict(id="q23", category="cross_reference", question="Is there a Contoso replacement for the Litware L-9460 1.6 gpf valve?",
          expected_part_numbers=["CF-1100-XL"], expected_doc_ids=["cross-reference-guide", "bulletin-2024-07-CF-1101-XL"],
+         must_contain=["CF-1100-XL"], must_not_contain=[],
          expected_answer="No current 1.6 gpf model; recommend CF-1100-XL (1.28 gpf)"),
     dict(id="q24", category="cross_reference", question="Will the K-CF-1100-RK2 kit fit a Litware L-9450 valve?",
          expected_part_numbers=["K-CF-1100-RK2"], expected_doc_ids=["cross-reference-guide"],
+         must_contain=["not"], must_not_contain=[],
          expected_answer="No, service parts are never interchangeable across manufacturers"),
     # stale content traps: the correct answer exists only in current docs
     dict(id="q25", category="stale_trap", question="Which repair kit should I use on a CF-1100-XL manufactured in 2025?",
          expected_part_numbers=["K-CF-1100-RK2"], expected_doc_ids=["install-CF-1100-series", "faq-contoso-flow", "bulletin-2024-07-CF-1101-XL", "spec-CF-1100-XL"],
+         must_contain=["K-CF-1100-RK2"], must_not_contain=[],
          expected_answer="K-CF-1100-RK2, not the generation 1 K-CF-1100-RK"),
     dict(id="q26", category="stale_trap", question="How often should the FX-2200-B filter be replaced?",
          expected_part_numbers=["K-FX-2200-FLT"], expected_doc_ids=["install-FX-2200-series", "spec-FX-2200-B"],
+         must_contain=["3,000", "12 months"], must_not_contain=["6 month"],
          expected_answer="Every 3,000 gallons or 12 months, whichever comes first"),
     dict(id="q27", category="stale_trap", question="What is the warranty on HydroFill bottle filling stations?",
          expected_part_numbers=["FX-2200-B", "FX-2200-BR"], expected_doc_ids=["warranty-policy-2026", "spec-FX-2200-B"],
+         must_contain=["5 year"], must_not_contain=["3 year"],
          expected_answer="5 years under the 2026 policy"),
     dict(id="q28", category="stale_trap", question="What is the warranty period for FloorGuard drains?",
          expected_part_numbers=["ND-415-A"], expected_doc_ids=["warranty-policy-2026", "spec-ND-415-A", "spec-ND-415-AS", "spec-ND-515-A", "spec-ND-600-CO"],
+         must_contain=["5 year"], must_not_contain=["3 year"],
          expected_answer="5 years under the 2026 policy"),
     dict(id="q29", category="stale_trap", question="Is labor covered under the Contoso warranty?",
          expected_part_numbers=[], expected_doc_ids=["warranty-policy-2026"],
+         must_contain=["90 days"], must_not_contain=["never covered"],
          expected_answer="Yes for the first year if the product is registered within 90 days of installation"),
     dict(id="q30", category="stale_trap", question="What is the minimum flowing supply pressure for a CF-1100-XL?",
          expected_part_numbers=["CF-1100-XL"], expected_doc_ids=["install-CF-1100-series"],
+         must_contain=["25 psi"], must_not_contain=["20 psi"],
          expected_answer="25 psi flowing (the 2020 guide said 20 psi)"),
     # descriptive questions where vector search does fine
     dict(id="q31", category="descriptive", question="My flush valve keeps running and will not shut off. What should I check?",
          expected_part_numbers=["K-CF-1100-RK2"], expected_doc_ids=["faq-contoso-flow", "install-CF-1100-series"],
+         must_contain=["diaphragm"], must_not_contain=[],
          expected_answer="Close the stop, inspect the diaphragm for debris, replace with K-CF-1100-RK2"),
     dict(id="q32", category="descriptive", question="What does a blinking red light on a sensor flush valve mean?",
          expected_part_numbers=["B-CF-4AA"], expected_doc_ids=["install-CF-1100-series"],
+         must_contain=["batter"], must_not_contain=[],
          expected_answer="Batteries below 20 percent; replace the B-CF-4AA batteries"),
     dict(id="q33", category="descriptive", question="Can a refrigerated bottle filler be installed in an unheated loading dock?",
          expected_part_numbers=["FX-2200-BR"], expected_doc_ids=["install-FX-2200-series"],
+         must_contain=["40"], must_not_contain=[],
          expected_answer="No, not below 40 F"),
     dict(id="q34", category="descriptive", question="How do I file a warranty claim?",
          expected_part_numbers=[], expected_doc_ids=["warranty-policy-2026"],
+         must_contain=["model number"], must_not_contain=[],
          expected_answer="Contact Customer Care with model number, date code, installation date, description and photos"),
     dict(id="q35", category="descriptive", question="What is the difference between the CF-1250-S and CF-1250-SB?",
          expected_part_numbers=["CF-1250-S", "CF-1250-SB"], expected_doc_ids=["faq-contoso-flow", "spec-CF-1250-S", "spec-CF-1250-SB"],
+         must_contain=["P-CF-24V", "B-CF-4AA"], must_not_contain=[],
          expected_answer="S is hardwired with P-CF-24V, SB is battery powered with B-CF-4AA"),
+    dict(id="q36", category="stale_trap", question="What is the filter capacity of the FX-2200-B?",
+         expected_part_numbers=["FX-2200-B", "K-FX-2200-FLT"], expected_doc_ids=["spec-FX-2200-B", "install-FX-2200-series"],
+         must_contain=["3,000"], must_not_contain=["1,500"],
+         expected_answer="3,000 gallons or 12 months (the SharePoint copy still says 1,500)"),
+    dict(id="q37", category="stale_trap", question="What is the list price of the FX-2200-B?",
+         expected_part_numbers=["FX-2200-B"], expected_doc_ids=["spec-FX-2200-B"],
+         must_contain=["1,245"], must_not_contain=["1,180"],
+         expected_answer="$1,245.00 (the SharePoint copy still says $1,180.00)"),
 ]
 
 
