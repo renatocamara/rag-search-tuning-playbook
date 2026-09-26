@@ -48,6 +48,46 @@ CORRECT if the assistant's answer contains the same key facts (part numbers, val
 INCORRECT otherwise. Extra correct detail is fine. A wrong or missing part number is INCORRECT."""
 
 
+DESCRIPTION = """\
+run_eval.py: run every question of the evaluation set through the retriever and score the result.
+
+The evaluation set (data/eval/eval_set.jsonl) has one line per question with the answer key:
+which documents contain the answer, which part numbers a correct answer must mention, and
+which strings the generated answer must and must not contain. For each question the script
+sends the search request in the chosen mode, takes the top passages and checks them against
+that key. The output is one table: a row per category, a column per metric, values 0 to 1.
+
+Run it before and after every change to the index, the filters, the chunking or the prompt,
+then compare the two results files. Without this, every improvement is an opinion.
+"""
+
+EPILOG = """\
+Metrics (each is an average over the questions, 0 to 1)
+  hit@1        top passage comes from a correct document                        higher is better
+  hit@3        a correct document is within the top 3 passages                   higher is better
+  hit@5        a correct document is within the top 5, i.e. reached the model    higher is better
+  mrr          average of 1/position of the first correct document               higher is better
+  part@3       expected part number present in the top 3 passages                higher is better
+  stale@1      top passage is archived or community content                      lower is better
+  noncanon@1   top passage is a non-canonical copy (e.g. SharePoint duplicate)    lower is better
+  contam@5     any archived, community or non-canonical passage in the top 5     lower is better
+  answer_ok    (--answer) answer has every must_contain, no must_not_contain      higher is better
+  judge_ok     (--answer --judge) a second model judged the answer correct        higher is better
+
+Reading the table
+  The first four say whether and where the right document appeared. The next three say what
+  came along that should not have. The last two grade the final answer. A change that raises
+  hit@1 on part_lookup but lowers descriptive has a cost; the categories exist to show it.
+
+Examples
+  python scripts/eval/run_eval.py --mode vector
+  python scripts/eval/run_eval.py --mode semantic --current --canonical
+  python scripts/eval/run_eval.py --mode semantic --current --canonical --answer
+  python scripts/eval/run_eval.py --only q36 q37 --mode semantic --current
+  python scripts/eval/run_eval.py --compare results/<a>.json results/<b>.json
+"""
+
+
 def load_eval():
     with open(os.path.join(common.DATA_DIR, "eval", "eval_set.jsonl"), encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
@@ -101,12 +141,30 @@ def summarize(results):
     return keys, overall, cats
 
 
+LEGEND = {
+    "hit@1":      "top passage comes from a correct document                  (higher is better)",
+    "hit@3":      "a correct document is within the top 3 passages             (higher is better)",
+    "hit@5":      "a correct document is within the top 5, i.e. reached the model (higher is better)",
+    "mrr":        "average of 1/position of the first correct document          (higher is better)",
+    "part@3":     "expected part number present in the top 3 passages           (higher is better)",
+    "stale@1":    "top passage is archived or community content                 (lower is better)",
+    "noncanon@1": "top passage is a non-canonical copy, e.g. SharePoint duplicate (lower is better)",
+    "contam@5":   "any archived, community or non-canonical passage in the top 5 (lower is better)",
+    "answer_ok":  "generated answer has every must_contain and no must_not_contain string (higher is better)",
+    "judge_ok":   "a second model judged the generated answer correct           (higher is better)",
+}
+
+
 def print_summary(label, keys, overall, cats, n):
     print(f"\n{label}  ({n} questions)")
     print("  " + "category".ljust(18) + "".join(k.rjust(11) for k in keys))
     print("  " + "ALL".ljust(18) + "".join(f"{overall[k]:11.2f}" for k in keys))
     for c, m in cats.items():
         print("  " + c.ljust(18) + "".join(f"{m[k]:11.2f}" for k in keys))
+    print("\n  All values are averages over the questions, 0 to 1. For each question the retriever returns the top 5")
+    print("  passages and the script checks them against the expected documents and part numbers.")
+    for k in keys:
+        print(f"    {k:11s} {LEGEND[k]}")
 
 
 def compare(a_path, b_path):
@@ -130,20 +188,22 @@ def compare(a_path, b_path):
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", default="hybrid", choices=retrieval.MODES)
-    ap.add_argument("--top", type=int, default=5)
-    ap.add_argument("--filter")
+    ap = argparse.ArgumentParser(prog="run_eval.py", description=DESCRIPTION, epilog=EPILOG,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--mode", default="hybrid", choices=retrieval.MODES,
+                    help="retrieval mode for every question (default hybrid; recommended semantic)")
+    ap.add_argument("--top", type=int, default=5, help="passages retrieved per question (default 5)")
+    ap.add_argument("--filter", metavar="EXPR", help="OData filter applied to every question")
     ap.add_argument("--current", action="store_true", help="filter: status eq 'current'")
     ap.add_argument("--canonical", action="store_true", help="filter: is_canonical eq true (drops non-canonical copies)")
-    ap.add_argument("--profile")
-    ap.add_argument("--no-normalize", action="store_true")
+    ap.add_argument("--profile", metavar="NAME", help="scoring profile to apply, e.g. prefer-current")
+    ap.add_argument("--no-normalize", action="store_true", help="do not append normalized part numbers to the search text")
     ap.add_argument("--answer", action="store_true", help="generate answers and grade them with must_contain strings")
     ap.add_argument("--judge", action="store_true", help="with --answer: also ask a second model to judge (slower)")
     ap.add_argument("--no-metadata", action="store_true", help="with --answer: passages sent as bare text, no labels")
-    ap.add_argument("--label", help="name for this run (default: built from the options)")
-    ap.add_argument("--only", nargs="*", help="run only these question ids")
-    ap.add_argument("--compare", nargs=2, metavar="JSON", help="compare two result files instead of running")
+    ap.add_argument("--label", help="name for this run, used in the results file name (default: built from the options)")
+    ap.add_argument("--only", nargs="*", metavar="QID", help="run only these question ids, e.g. --only q36 q37")
+    ap.add_argument("--compare", nargs=2, metavar="JSON", help="compare two results/*.json files instead of running")
     args = ap.parse_args()
 
     if args.compare:
